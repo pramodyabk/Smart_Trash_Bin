@@ -1,0 +1,23 @@
+menu "Smart Bin Configuration"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the ESP32 to connect to.
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password.
+
+    config HIVEMQ_USERNAME
+        string "HiveMQ Username"
+        default "myusername"
+        
+    config HIVEMQ_PASSWORD
+        string "HiveMQ Password"
+        default "mypassword"
+
+endmenu

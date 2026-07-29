@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Bin Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        h1 { text-align: center; color: #1a73e8; }
+        
+        .dashboard-container { max-width: 1000px; margin: 0 auto; }
+        
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+        .stat-card h3 { margin: 0 0 10px 0; color: #5f6368; font-size: 16px; text-transform: uppercase; }
+        .stat-card p { margin: 0; font-size: 32px; font-weight: bold; color: #1a73e8; }
+        
+        /* Table */
+        .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        th { background-color: #f8f9fa; font-weight: 600; color: #5f6368; }
+        tr:hover { background-color: #f8f9fa; }
+        
+        /* Flash animation for new rows */
+        .flash { animation: highlight 2s ease-out; }
+        @keyframes highlight { from { background-color: #e6f4ea; } to { background-color: transparent; } }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <h1>Smart Bin Dashboard</h1>
+    
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Cardboard</h3><p id="count-cardboard">0</p></div>
+        <div class="stat-card"><h3>Glass</h3><p id="count-glass">0</p></div>
+        <div class="stat-card"><h3>Metal</h3><p id="count-metal">0</p></div>
+        <div class="stat-card"><h3>Paper</h3><p id="count-paper">0</p></div>
+        <div class="stat-card"><h3>Plastic</h3><p id="count-plastic">0</p></div>
+        <div class="stat-card"><h3>Trash</h3><p id="count-trash">0</p></div>
+    </div>
+
+    <div class="table-container">
+        <h2>Recent Detections</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Item Detected</th>
+                    <th>Confidence</th>
+                </tr>
+            </thead>
+            <tbody id="log-table-body">
+                <!-- Rows injected here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+
+    // Helper to update the KPI counts
+    function updateCounts(counts) {
+        Object.keys(counts).forEach(key => {
+            const el = document.getElementById(`count-${key}`);
+            if (el) el.innerText = counts[key];
+        });
+    }
+
+    // Helper to render the table rows
+    function renderLogs(logs) {
+        const tbody = document.getElementById('log-table-body');
+        tbody.innerHTML = ''; // Clear table
+        logs.forEach((log) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${log.timestamp}</td><td>${log.item}</td><td>${log.confidence}%</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Initial load
+    socket.on('initialData', (data) => {
+        updateCounts(data.counts);
+        renderLogs(data.logs);
+    });
+
+    // Real-time updates
+    socket.on('update', (data) => {
+        updateCounts(data.counts);
+        
+        // Prepend new row to table
+        const tbody = document.getElementById('log-table-body');
+        const tr = document.createElement('tr');
+        tr.className = 'flash';
+        tr.innerHTML = `<td>${data.newLog.timestamp}</td><td><strong>${data.newLog.item.toUpperCase()}</strong></td><td>${data.newLog.confidence}%</td>`;
+        
+        tbody.insertBefore(tr, tbody.firstChild);
+        
+        // Keep table short
+        if (tbody.children.length > 20) {
+            tbody.removeChild(tbody.lastChild);
+        }
+    });
+</script>
+
+</body>
+</html>
