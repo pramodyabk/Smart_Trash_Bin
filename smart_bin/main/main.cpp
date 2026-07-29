@@ -8,7 +8,6 @@
 #include "freertos/task.h"
 #include "esp_camera.h"
 #include "mqtt_client.h"
-#include "driver/ledc.h"
 
 // TensorFlow Lite Micro
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -93,8 +92,6 @@ static const char *hivemq_root_ca = \
 #define CAM_PIN_PCLK 22
 
 
-#define SERVO_PIN 13 
-
 // classes
 const char* class_labels[] = {"cardboard", "glass", "metal", "paper", "plastic", "trash"};
 const int NUM_CLASSES = 6;
@@ -160,22 +157,6 @@ void init_secure_mqtt() {
     esp_mqtt_client_start(mqtt_client);
 }
 
-void init_servo() {
-    ledc_timer_config_t timer_conf = {};
-    timer_conf.duty_resolution = LEDC_TIMER_13_BIT;
-    timer_conf.freq_hz = 50; 
-    timer_conf.speed_mode = LEDC_LOW_SPEED_MODE;
-    timer_conf.timer_num = LEDC_TIMER_1;
-    ledc_timer_config(&timer_conf);
-
-    ledc_channel_config_t ch_conf = {};
-    ch_conf.channel = LEDC_CHANNEL_1;
-    ch_conf.duty = 400; // start center
-    ch_conf.gpio_num = SERVO_PIN;
-    ch_conf.speed_mode = LEDC_LOW_SPEED_MODE;
-    ch_conf.timer_sel = LEDC_TIMER_1;
-    ledc_channel_config(&ch_conf);
-}
 
 esp_err_t init_camera() {
     camera_config_t config;
@@ -196,34 +177,6 @@ esp_err_t init_camera() {
     return esp_camera_init(&config);
 }
 
-void sort_trash(int class_index) {
-    int target_duty = 400; 
-
-    switch (class_index) {
-        case 0: // Cardboard
-        case 3: // Paper
-            ESP_LOGW(TAG, "Routing to PAPER BIN");
-            target_duty = 250; // Rotate left
-            break;
-        case 1: // Glass
-        case 2: // Metal
-        case 4: // Plastic
-            ESP_LOGW(TAG, "Routing to RECYCLING BIN");
-            target_duty = 550; // Rotate right
-            break;
-        case 5: // Trash
-            ESP_LOGW(TAG, "Routing to LANDFILL BIN");
-            target_duty = 400; // Stay center
-            break;
-    }
-
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, target_duty);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-    
-    vTaskDelay(pdMS_TO_TICKS(1500));
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 400);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-}
 
 extern "C" void app_main(void) {
     ESP_LOGI(TAG, "Starting Smart Bin Firmware");
